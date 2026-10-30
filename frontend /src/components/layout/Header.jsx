@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 
-const pageTitles: Record<string, string> = {
+const pageTitles = {
   '/': 'Dashboard',
   '/employees': 'Employees',
 };
@@ -36,10 +36,9 @@ export default function Header() {
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ textAlign: 'right' }}>
-            
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-  HR Manager
-</Typography>
+              HR Manager
+            </Typography>
             <Typography variant="caption" color="text.secondary">
               ACME Organization
             </Typography>
