@@ -20,8 +20,16 @@ const initialFormData = {
   hireDate: '',
 };
 
-export default function EmployeeForm({ onSubmit, onCancel }) {
-  const [formData, setFormData] = useState(initialFormData);
+export default function EmployeeForm({
+  initialData = initialFormData,
+  onSubmit,
+  onCancel,
+  submitLabel = 'Save Employee',
+}) {
+  const [formData, setFormData] = useState(() => ({
+    ...initialFormData,
+    ...initialData,
+  }));
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -149,9 +157,9 @@ export default function EmployeeForm({ onSubmit, onCancel }) {
             Cancel
           </Button>
 
-          <Button type="submit" variant="contained">
-            Save Employee
-          </Button>
+         <Button type="submit" variant="contained">
+  {submitLabel}
+</Button>
         </Stack>
       </Stack>
     </Box>

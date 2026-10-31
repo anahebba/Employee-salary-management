@@ -18,19 +18,26 @@ import {
   Alert,
   Avatar,
   Stack,
-   Dialog,
+  Dialog,
   DialogContent,
   DialogTitle,
   Button,
   Snackbar,
+  IconButton,
 } from '@mui/material';
+
 import SearchIcon from '@mui/icons-material/Search';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
-import { getEmployees } from '../../api/employees';
 import AddIcon from '@mui/icons-material/Add';
-import EmployeeForm from '../../components/employees/EmployeeForm';
-import { createEmployee } from '../../api/employees';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 
+import EmployeeForm from '../../components/employees/EmployeeForm';
+
+import {
+  getEmployees,
+  createEmployee,
+  updateEmployee,
+} from '../../api/employees';
 
 export default function EmployeesPage() {
   const [search, setSearch] = useState('');
@@ -43,8 +50,10 @@ export default function EmployeesPage() {
   const [totalEmployees, setTotalEmployees] = useState(0);
 
   const [openForm, setOpenForm] = useState(false);
-const [successMessage, setSuccessMessage] = useState('');
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
 
+  // Fetch employees whenever pagination changes.
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -60,7 +69,9 @@ const [successMessage, setSuccessMessage] = useState('');
         setTotalEmployees(data.totalElements);
       } catch (err) {
         console.error('Failed to fetch employees:', err);
-        setError('Unable to load employees. Please check whether the backend is running.');
+        setError(
+          'Unable to load employees. Please check whether the backend is running.'
+        );
       } finally {
         setLoading(false);
       }
@@ -69,6 +80,7 @@ const [successMessage, setSuccessMessage] = useState('');
     fetchEmployees();
   }, [page, rowsPerPage]);
 
+  // Search currently filters the employees on the loaded page.
   const filteredEmployees = employees.filter((employee) =>
     `${employee.firstName} ${employee.lastName} ${employee.email} ${employee.department} ${employee.jobTitle}`
       .toLowerCase()
@@ -78,29 +90,74 @@ const [successMessage, setSuccessMessage] = useState('');
   const getInitials = (employee) =>
     `${employee.firstName?.[0] || ''}${employee.lastName?.[0] || ''}`.toUpperCase();
 
-
+  // Create a new employee.
   const handleCreateEmployee = async (employeeData) => {
-  try {
-    await createEmployee(employeeData);
+    try {
+      await createEmployee(employeeData);
 
+      setOpenForm(false);
+      setSelectedEmployee(null);
+      setError('');
+      setSuccessMessage('Employee created successfully!');
+
+      const data = await getEmployees({
+        page,
+        size: rowsPerPage,
+      });
+
+      setEmployees(data.content);
+      setTotalEmployees(data.totalElements);
+    } catch (err) {
+      console.error('Failed to create employee:', err);
+      setError(
+        err.response?.data?.message || 'Unable to create employee.'
+      );
+    }
+  };
+
+  // Update an existing employee.
+  const handleUpdateEmployee = async (employeeData) => {
+    try {
+      await updateEmployee(selectedEmployee.id, employeeData);
+
+      setOpenForm(false);
+      setSelectedEmployee(null);
+      setError('');
+      setSuccessMessage('Employee updated successfully!');
+
+      const data = await getEmployees({
+        page,
+        size: rowsPerPage,
+      });
+
+      setEmployees(data.content);
+      setTotalEmployees(data.totalElements);
+    } catch (err) {
+      console.error('Failed to update employee:', err);
+      setError(
+        err.response?.data?.message || 'Unable to update employee.'
+      );
+    }
+  };
+
+  // Open the form in Add mode.
+  const handleOpenAddForm = () => {
+    setSelectedEmployee(null);
+    setError('');
+    setOpenForm(true);
+  };
+
+  // Open the form in Edit mode.
+  const handleOpenEditForm = (employee) => {
+    setSelectedEmployee(employee);
+    setError('');
+    setOpenForm(true);
+  };
+
+  const handleCloseForm = () => {
     setOpenForm(false);
-    setSuccessMessage('Employee created successfully!');
-
-    // Refresh the current page
-    const data = await getEmployees({
-      page,
-      size: rowsPerPage,
-    });
-
-    setEmployees(data.content);
-    setTotalEmployees(data.totalElements);
-  } catch (err) {
-    console.error('Failed to create employee:', err);
-    setError(
-      err.response?.data?.message || 'Unable to create employee.'
-    );
-  }
-};
+    setSelectedEmployee(null);
+  };
 
   return (
     <Box sx={{ maxWidth: 1500, mx: 'auto' }}>
@@ -112,43 +169,31 @@ const [successMessage, setSuccessMessage] = useState('');
       >
         <Box>
           <Typography variant="h4" fontWeight={700}>
-            <Stack
-  direction="row"
-  justifyContent="space-between"
-  alignItems="center"
-  sx={{ mb: 3 }}
->
-  <Box>
-    <Typography variant="h4" gutterBottom>
-      Employees
-    </Typography>
-
-    <Typography color="text.secondary">
-      Manage employee information and salary records here.
-    </Typography>
-  </Box>
-
-  <Button
-    variant="contained"
-    startIcon={<AddIcon />}
-    onClick={() => setOpenForm(true)}
-  >
-    Add Employee
-  </Button>
-</Stack>
+            Employees
           </Typography>
+
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
             Manage and view your organization's employee information.
           </Typography>
         </Box>
 
-        <Chip
-          icon={<GroupsOutlinedIcon />}
-          label={`${totalEmployees.toLocaleString()} Employees`}
-          color="primary"
-          variant="outlined"
-          sx={{ fontWeight: 600, px: 1 }}
-        />
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <Chip
+            icon={<GroupsOutlinedIcon />}
+            label={`${totalEmployees.toLocaleString()} Employees`}
+            color="primary"
+            variant="outlined"
+            sx={{ fontWeight: 600, px: 1 }}
+          />
+
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAddForm}
+          >
+            Add Employee
+          </Button>
+        </Stack>
       </Stack>
 
       <Paper
@@ -203,6 +248,7 @@ const [successMessage, setSuccessMessage] = useState('');
                       'DEPARTMENT',
                       'JOB TITLE',
                       'STATUS',
+                      'ACTIONS',
                     ].map((heading) => (
                       <TableCell
                         key={heading}
@@ -235,7 +281,11 @@ const [successMessage, setSuccessMessage] = useState('');
                       }}
                     >
                       <TableCell>
-                        <Stack direction="row" alignItems="center" spacing={1.5}>
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          spacing={1.5}
+                        >
                           <Avatar
                             sx={{
                               width: 38,
@@ -253,6 +303,7 @@ const [successMessage, setSuccessMessage] = useState('');
                             <Typography fontWeight={600} fontSize="0.875rem">
                               {employee.firstName} {employee.lastName}
                             </Typography>
+
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -293,12 +344,23 @@ const [successMessage, setSuccessMessage] = useState('');
                           }}
                         />
                       </TableCell>
+
+                      <TableCell>
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleOpenEditForm(employee)}
+                          aria-label={`Edit ${employee.firstName} ${employee.lastName}`}
+                        >
+                          <EditOutlinedIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
                     </TableRow>
                   ))}
 
                   {filteredEmployees.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
+                      <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
                         <Typography color="text.secondary">
                           No employees found.
                         </Typography>
@@ -324,28 +386,40 @@ const [successMessage, setSuccessMessage] = useState('');
           </>
         )}
       </Paper>
+
       <Dialog
-  open={openForm}
-  onClose={() => setOpenForm(false)}
-  fullWidth
-  maxWidth="sm"
->
-  <DialogTitle>Add New Employee</DialogTitle>
+        open={openForm}
+        onClose={handleCloseForm}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {selectedEmployee ? 'Edit Employee' : 'Add New Employee'}
+        </DialogTitle>
 
-  <DialogContent dividers>
-    <EmployeeForm
-      onSubmit={handleCreateEmployee}
-      onCancel={() => setOpenForm(false)}
-    />
-  </DialogContent>
-</Dialog>
+        <DialogContent dividers>
+          <EmployeeForm
+            key={selectedEmployee?.id || 'new'}
+            initialData={selectedEmployee || undefined}
+            onSubmit={
+              selectedEmployee
+                ? handleUpdateEmployee
+                : handleCreateEmployee
+            }
+            onCancel={handleCloseForm}
+            submitLabel={
+              selectedEmployee ? 'Update Employee' : 'Save Employee'
+            }
+          />
+        </DialogContent>
+      </Dialog>
 
-<Snackbar
-  open={Boolean(successMessage)}
-  autoHideDuration={4000}
-  message={successMessage}
-  onClose={() => setSuccessMessage('')}
-/>
+      <Snackbar
+        open={Boolean(successMessage)}
+        autoHideDuration={4000}
+        message={successMessage}
+        onClose={() => setSuccessMessage('')}
+      />
     </Box>
   );
 }
