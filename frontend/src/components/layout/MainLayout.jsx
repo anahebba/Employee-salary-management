@@ -1,11 +1,18 @@
-import { Box, Toolbar } from '@mui/material';
+
+import { Box } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 
 export default function MainLayout() {
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        minHeight: '100vh',
+        backgroundColor: '#f4f6fa',
+      }}
+    >
       <Sidebar />
 
       <Header />
@@ -14,13 +21,12 @@ export default function MainLayout() {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 4,
-          mt: '72px',
           minWidth: 0,
-          backgroundColor: 'background.default',
+          mt: '72px',
+          p: { xs: 2, sm: 3, lg: 4 },
+          backgroundColor: '#f4f6fa',
         }}
       >
-        <Toolbar sx={{ display: 'none' }} />
         <Outlet />
       </Box>
     </Box>

@@ -1,3 +1,4 @@
+
 import { AccountCircleOutlined } from '@mui/icons-material';
 import {
   AppBar,
@@ -10,7 +11,7 @@ import { useLocation } from 'react-router-dom';
 
 const pageTitles = {
   '/': 'Dashboard',
-  '/employees': 'Employees',
+  '/employees': 'Employee Management',
 };
 
 export default function Header() {
@@ -23,28 +24,46 @@ export default function Header() {
       elevation={0}
       color="inherit"
       sx={{
-        width: 'calc(100% - 250px)',
-        ml: '250px',
+        width: { xs: '100%', md: 'calc(100% - 250px)' },
+        ml: { xs: 0, md: '250px' },
         borderBottom: '1px solid #E2E8F0',
         backgroundColor: '#FFFFFF',
+        zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
-      <Toolbar sx={{ justifyContent: 'space-between', minHeight: '72px' }}>
-        <Typography variant="h6" color="text.primary">
+      <Toolbar
+        sx={{
+          justifyContent: 'space-between',
+          minHeight: '72px',
+          px: { xs: 2, sm: 3 },
+        }}
+      >
+        <Typography
+          variant="h6"
+          color="text.primary"
+          fontWeight={700}
+        >
           {title}
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ textAlign: 'right' }}>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            <Typography variant="body2" fontWeight={600}>
               HR Manager
             </Typography>
+
             <Typography variant="caption" color="text.secondary">
               ACME Organization
             </Typography>
           </Box>
 
-          <Avatar sx={{ bgcolor: 'primary.main' }}>
+          <Avatar
+            sx={{
+              bgcolor: 'primary.main',
+              width: 40,
+              height: 40,
+            }}
+          >
             <AccountCircleOutlined />
           </Avatar>
         </Box>
