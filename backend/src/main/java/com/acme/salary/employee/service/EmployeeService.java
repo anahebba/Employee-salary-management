@@ -60,7 +60,11 @@ public class EmployeeService {
     public EmployeeResponse create(CreateEmployeeRequest request) {
         Employee employee = new Employee();
 
-        employee.setEmployeeCode(request.employeeCode());
+        // Generate the employee code before saving.
+        Long sequenceNumber = employeeRepository.getNextEmployeeCodeSequence();
+        String employeeCode = "ACME" + String.format("%05d", sequenceNumber);
+
+        employee.setEmployeeCode(employeeCode);
         employee.setFirstName(request.firstName());
         employee.setLastName(request.lastName());
         employee.setEmail(request.email());
@@ -76,7 +80,6 @@ public class EmployeeService {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + id));
 
-        employee.setEmployeeCode(request.employeeCode());
         employee.setFirstName(request.firstName());
         employee.setLastName(request.lastName());
         employee.setEmail(request.email());

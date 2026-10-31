@@ -18,10 +18,19 @@ import {
   Alert,
   Avatar,
   Stack,
+   Dialog,
+  DialogContent,
+  DialogTitle,
+  Button,
+  Snackbar,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import { getEmployees } from '../../api/employees';
+import AddIcon from '@mui/icons-material/Add';
+import EmployeeForm from '../../components/employees/EmployeeForm';
+import { createEmployee } from '../../api/employees';
+
 
 export default function EmployeesPage() {
   const [search, setSearch] = useState('');
@@ -32,6 +41,9 @@ export default function EmployeesPage() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalEmployees, setTotalEmployees] = useState(0);
+
+  const [openForm, setOpenForm] = useState(false);
+const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -66,6 +78,30 @@ export default function EmployeesPage() {
   const getInitials = (employee) =>
     `${employee.firstName?.[0] || ''}${employee.lastName?.[0] || ''}`.toUpperCase();
 
+
+  const handleCreateEmployee = async (employeeData) => {
+  try {
+    await createEmployee(employeeData);
+
+    setOpenForm(false);
+    setSuccessMessage('Employee created successfully!');
+
+    // Refresh the current page
+    const data = await getEmployees({
+      page,
+      size: rowsPerPage,
+    });
+
+    setEmployees(data.content);
+    setTotalEmployees(data.totalElements);
+  } catch (err) {
+    console.error('Failed to create employee:', err);
+    setError(
+      err.response?.data?.message || 'Unable to create employee.'
+    );
+  }
+};
+
   return (
     <Box sx={{ maxWidth: 1500, mx: 'auto' }}>
       <Stack
@@ -76,7 +112,30 @@ export default function EmployeesPage() {
       >
         <Box>
           <Typography variant="h4" fontWeight={700}>
-            Employees
+            <Stack
+  direction="row"
+  justifyContent="space-between"
+  alignItems="center"
+  sx={{ mb: 3 }}
+>
+  <Box>
+    <Typography variant="h4" gutterBottom>
+      Employees
+    </Typography>
+
+    <Typography color="text.secondary">
+      Manage employee information and salary records here.
+    </Typography>
+  </Box>
+
+  <Button
+    variant="contained"
+    startIcon={<AddIcon />}
+    onClick={() => setOpenForm(true)}
+  >
+    Add Employee
+  </Button>
+</Stack>
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
             Manage and view your organization's employee information.
@@ -265,6 +324,28 @@ export default function EmployeesPage() {
           </>
         )}
       </Paper>
+      <Dialog
+  open={openForm}
+  onClose={() => setOpenForm(false)}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>Add New Employee</DialogTitle>
+
+  <DialogContent dividers>
+    <EmployeeForm
+      onSubmit={handleCreateEmployee}
+      onCancel={() => setOpenForm(false)}
+    />
+  </DialogContent>
+</Dialog>
+
+<Snackbar
+  open={Boolean(successMessage)}
+  autoHideDuration={4000}
+  message={successMessage}
+  onClose={() => setSuccessMessage('')}
+/>
     </Box>
   );
 }

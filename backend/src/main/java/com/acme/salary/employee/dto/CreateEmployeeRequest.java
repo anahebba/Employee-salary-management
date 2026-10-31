@@ -11,10 +11,6 @@ import java.time.LocalDate;
 public record CreateEmployeeRequest(
 
         @NotBlank
-        @Size(max = 20)
-        String employeeCode,
-
-        @NotBlank
         @Size(max = 100)
         String firstName,
 
