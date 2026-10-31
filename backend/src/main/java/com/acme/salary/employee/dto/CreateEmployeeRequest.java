@@ -1,5 +1,6 @@
 package com.acme.salary.employee.dto;
 
+import com.acme.salary.employee.entity.EmploymentStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -37,6 +38,9 @@ public record CreateEmployeeRequest(
 
         @NotNull
         @PastOrPresent
-        LocalDate hireDate
+        LocalDate hireDate,
+
+        @NotNull
+        EmploymentStatus employmentStatus
 ) {
 }

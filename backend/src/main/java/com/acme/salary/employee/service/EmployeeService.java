@@ -72,6 +72,7 @@ public class EmployeeService {
         employee.setDepartment(request.department());
         employee.setJobTitle(request.jobTitle());
         employee.setHireDate(request.hireDate());
+        employee.setEmploymentStatus(request.employmentStatus());
 
         return toResponse(employeeRepository.save(employee));
     }
@@ -87,6 +88,7 @@ public class EmployeeService {
         employee.setDepartment(request.department());
         employee.setJobTitle(request.jobTitle());
         employee.setHireDate(request.hireDate());
+        employee.setEmploymentStatus(request.employmentStatus());
 
         return toResponse(employeeRepository.save(employee));
     }
