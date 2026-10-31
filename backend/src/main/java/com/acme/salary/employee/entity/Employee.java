@@ -146,4 +146,7 @@ public class Employee {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
+    public void setId(Long id) {
+        this.id = id;
+    }
 }
