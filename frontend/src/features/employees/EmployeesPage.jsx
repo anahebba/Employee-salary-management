@@ -219,39 +219,49 @@ export default function EmployeesPage() {
   return (
     <Box>
       {/* Page title and Add Employee button */}
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        spacing={2}
-        sx={{ mb: 3 }}
-      >
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Employees
-          </Typography>
+    
+{/* Page title and Add Employee button */}
+<Stack
+  direction={{ xs: 'column', sm: 'row' }}
+  alignItems={{ xs: 'flex-start', sm: 'center' }}
+  justifyContent="space-between"
+  spacing={1.5}
+  sx={{ mb: 3, width: '100%' }}
+>
+  <Box>
+    <Typography variant="h4" fontWeight={700}>
+      Employees
+    </Typography>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Manage employee information and employment status
-          </Typography>
-        </Box>
+    <Typography
+      variant="body2"
+      color="text.secondary"
+      sx={{ mt: 0.5 }}
+    >
+      Manage employee information and employment status
+    </Typography>
+  </Box>
 
-        <Button
-          variant="contained"
-          size="medium"
-          startIcon={<AddIcon />}
-          onClick={handleOpenCreateForm}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 600,
-            borderRadius: 2,
-            px: 2,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Add Employee
-        </Button>
-      </Stack>
+  <Button
+    variant="contained"
+    size="small"
+    startIcon={<AddIcon fontSize="small" />}
+    onClick={handleOpenCreateForm}
+    sx={{
+      textTransform: 'none',
+      fontWeight: 600,
+      borderRadius: 2,
+      px: 1.75,
+      py: 0.75,
+      minWidth: 'auto',
+      whiteSpace: 'nowrap',
+      alignSelf: { xs: 'flex-end', sm: 'center' },
+    }}
+  >
+    Add Employee
+  </Button>
+</Stack>
+
 
       {/* Search */}
       <Paper

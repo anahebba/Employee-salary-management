@@ -10,7 +10,7 @@ export default function MainLayout() {
       sx={{
         display: 'flex',
         minHeight: '100vh',
-        backgroundColor: '#f4f6fa',
+        backgroundColor: 'background.default',
       }}
     >
       <Sidebar />
@@ -24,7 +24,7 @@ export default function MainLayout() {
           minWidth: 0,
           mt: '72px',
           p: { xs: 2, sm: 3, lg: 4 },
-          backgroundColor: '#f4f6fa',
+          backgroundColor: 'background.default',
         }}
       >
         <Outlet />

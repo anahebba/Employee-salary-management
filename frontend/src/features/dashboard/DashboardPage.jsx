@@ -1,4 +1,6 @@
 
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@mui/material/styles';
 
@@ -12,10 +14,15 @@ import {
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   CircularProgress,
+  FormControl,
   Grid,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   Typography,
 } from '@mui/material';
@@ -25,6 +32,8 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -35,24 +44,24 @@ import {
   getPayrollSummary,
   getHeadcountSummary,
   getSalaryStatistics,
+  getDashboardAnalytics,
 } from '../../api/analytics';
 
-// Consistent number formatting across charts and KPI values.
 const formatNumber = (value) =>
-  Number(value).toLocaleString('en-US', {
+  Number(value || 0).toLocaleString('en-US', {
     maximumFractionDigits: 0,
   });
 
-// Consistent currency formatting.
 const formatCurrency = (value, currencyCode) =>
-  `${currencyCode} ${Number(value).toLocaleString('en-US', {
+  `${currencyCode || ''} ${Number(value || 0).toLocaleString('en-US', {
     maximumFractionDigits: 0,
-  })}`;
+  })}`.trim();
 
-// Reusable KPI card component.
+const getArray = (value) => (Array.isArray(value) ? value : []);
+
 function KpiCard({ title, value, subtitle, icon: Icon }) {
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card sx={{ height: '100%', borderRadius: 3 }}>
       <CardContent sx={{ p: 2.5 }}>
         <Stack
           direction="row"
@@ -72,11 +81,9 @@ function KpiCard({ title, value, subtitle, icon: Icon }) {
               {value}
             </Typography>
 
-            {subtitle && (
-              <Typography variant="caption" color="text.secondary">
-                {subtitle}
-              </Typography>
-            )}
+            <Typography variant="caption" color="text.secondary">
+              {subtitle}
+            </Typography>
           </Box>
 
           <Box
@@ -91,7 +98,7 @@ function KpiCard({ title, value, subtitle, icon: Icon }) {
               color: 'primary.main',
             }}
           >
-            <Icon fontSize="medium" />
+            <Icon />
           </Box>
         </Stack>
       </CardContent>
@@ -99,24 +106,33 @@ function KpiCard({ title, value, subtitle, icon: Icon }) {
   );
 }
 
-// Reusable chart card component.
-function ChartCard({ title, subtitle, children }) {
+function ChartCard({ title, subtitle, action, children }) {
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card sx={{ height: '100%', borderRadius: 3 }}>
       <CardContent sx={{ p: 2.5 }}>
-        <Typography variant="h6" fontWeight={600}>
-          {title}
-        </Typography>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          spacing={1}
+          sx={{ mb: 2 }}
+        >
+          <Box>
+            <Typography variant="h6" fontWeight={650}>
+              {title}
+            </Typography>
 
-        {subtitle && (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mt: 0.5, mb: 2 }}
-          >
-            {subtitle}
-          </Typography>
-        )}
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
+            >
+              {subtitle}
+            </Typography>
+          </Box>
+
+          {action}
+        </Stack>
 
         {children}
       </CardContent>
@@ -124,51 +140,279 @@ function ChartCard({ title, subtitle, children }) {
   );
 }
 
-export default function DashboardPage() {
-  // Access the centralized MUI theme colours.
-  const theme = useTheme();
-  const chartColors = theme.palette.chart;
+function EmptyChart() {
+  return (
+    <Box
+      sx={{
+        height: 300,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'text.secondary',
+      }}
+    >
+      <Typography variant="body2">
+        No data available for this selection.
+      </Typography>
+    </Box>
+  );
+}
 
-  // Fetch payroll summary.
+export default function DashboardPage() {
+  const theme = useTheme();
+  const navigate = useNavigate();
+
+  const chartColors = theme.palette.chart || {};
+
+  const [period, setPeriod] = useState('12M');
+  const [country, setCountry] = useState('All');
+  const [department, setDepartment] = useState('All');
+  const [selectedStatisticsCountry, setSelectedStatisticsCountry] =
+    useState('');
+
+  const filters = useMemo(
+    () => ({
+      period,
+      country: country === 'All' ? undefined : country,
+      department: department === 'All' ? undefined : department,
+    }),
+    [period, country, department]
+  );
+
   const {
     data: payrollSummary = [],
-    isLoading: isPayrollLoading,
-    isError: isPayrollError,
-    error: payrollError,
+    isLoading: payrollLoading,
+    isError: payrollError,
   } = useQuery({
     queryKey: ['payrollSummary'],
     queryFn: getPayrollSummary,
   });
 
-  // Fetch employee headcount.
   const {
     data: headcountSummary = [],
-    isLoading: isHeadcountLoading,
-    isError: isHeadcountError,
+    isLoading: headcountLoading,
+    isError: headcountError,
   } = useQuery({
     queryKey: ['headcountSummary'],
     queryFn: getHeadcountSummary,
   });
 
-  // Fetch salary statistics.
   const {
     data: salaryStatistics = [],
-    isLoading: isSalaryLoading,
-    isError: isSalaryError,
+    isLoading: statisticsLoading,
+    isError: statisticsError,
   } = useQuery({
     queryKey: ['salaryStatistics'],
     queryFn: getSalaryStatistics,
   });
 
-  // Display a loading indicator until all three APIs respond.
-  if (isPayrollLoading || isHeadcountLoading || isSalaryLoading) {
+  const {
+    data: dashboardAnalytics = {},
+    isLoading: dashboardLoading,
+    isError: dashboardError,
+  } = useQuery({
+    queryKey: ['dashboardAnalytics', filters],
+    queryFn: () => getDashboardAnalytics(filters),
+  });
+
+  const isLoading =
+    payrollLoading ||
+    headcountLoading ||
+    statisticsLoading ||
+    dashboardLoading;
+
+  const hasError =
+    payrollError ||
+    headcountError ||
+    statisticsError ||
+    dashboardError;
+
+  const filteredPayroll = useMemo(
+    () =>
+      getArray(payrollSummary).filter(
+        (item) =>
+          !(item.country === 'India' && item.currencyCode === 'GBP') &&
+          (country === 'All' || item.country === country)
+      ),
+    [payrollSummary, country]
+  );
+
+  const filteredHeadcount = useMemo(
+    () =>
+      getArray(headcountSummary).filter(
+        (item) =>
+          (country === 'All' || item.country === country) &&
+          (department === 'All' || item.department === department)
+      ),
+    [headcountSummary, country, department]
+  );
+
+  const filteredStatistics = useMemo(
+    () =>
+      getArray(salaryStatistics).filter(
+        (item) =>
+          !(item.country === 'India' && item.currencyCode === 'GBP') &&
+          (country === 'All' || item.country === country)
+      ),
+    [salaryStatistics, country]
+  );
+
+  const countries = useMemo(
+    () =>
+      [
+        ...new Set(
+          getArray(headcountSummary)
+            .map((item) => item.country)
+            .filter(Boolean)
+        ),
+      ].sort(),
+    [headcountSummary]
+  );
+
+  const departments = useMemo(
+    () =>
+      [
+        ...new Set(
+          getArray(headcountSummary)
+            .map((item) => item.department)
+            .filter(Boolean)
+        ),
+      ].sort(),
+    [headcountSummary]
+  );
+
+  const activeEmployees = filteredHeadcount.reduce(
+    (total, item) => total + Number(item.employeeCount || 0),
+    0
+  );
+
+  const countriesCovered = new Set(
+    filteredHeadcount.map((item) => item.country)
+  ).size;
+
+  const payrollGroups = filteredPayroll.length;
+
+  const salaryTrend = getArray(
+    dashboardAnalytics?.salaryTrend ??
+      dashboardAnalytics?.data?.salaryTrend ??
+      dashboardAnalytics?.trends?.salaryTrend
+  );
+
+  const salaryRevisions =
+    dashboardAnalytics?.totalRevisions ??
+    dashboardAnalytics?.salaryRevisions ??
+    dashboardAnalytics?.revisionCount ??
+    salaryTrend.reduce(
+      (total, item) =>
+        total +
+        Number(
+          item.revisionCount ??
+            item.salaryRevisionCount ??
+            item.revisions ??
+            item.count ??
+            item.total ??
+            0
+        ),
+      0
+    );
+
+  const departmentHeadcount = useMemo(
+    () =>
+      filteredHeadcount.reduce((result, item) => {
+        let entry = result.find(
+          (row) => row.department === item.department
+        );
+
+        if (!entry) {
+          entry = { department: item.department };
+          result.push(entry);
+        }
+
+        entry[item.country] =
+          (entry[item.country] || 0) +
+          Number(item.employeeCount || 0);
+
+        return result;
+      }, []),
+    [filteredHeadcount]
+  );
+
+  const statisticsCountries = filteredStatistics.map((item) => ({
+    country: item.country,
+    currencyCode: item.currencyCode,
+  }));
+
+  const activeStatisticsCountry =
+    selectedStatisticsCountry &&
+    statisticsCountries.some(
+      (item) => item.country === selectedStatisticsCountry
+    )
+      ? selectedStatisticsCountry
+      : statisticsCountries[0]?.country || '';
+
+  const selectedStatistics = filteredStatistics.find(
+    (item) => item.country === activeStatisticsCountry
+  );
+
+  const statisticsChartData = selectedStatistics
+    ? [
+        {
+          metric: 'Average',
+          value: Number(selectedStatistics.averageSalary || 0),
+        },
+        {
+          metric: 'Median',
+          value: Number(selectedStatistics.medianSalary || 0),
+        },
+        {
+          metric: 'Minimum',
+          value: Number(selectedStatistics.minimumSalary || 0),
+        },
+        {
+          metric: 'Maximum',
+          value: Number(selectedStatistics.maximumSalary || 0),
+        },
+      ]
+    : [];
+
+  const chartPalette = [
+    chartColors.terracotta || '#A96F62',
+    chartColors.sage || '#829B8D',
+    chartColors.dustyBlue || '#858EAD',
+    chartColors.ochre || '#BD9A68',
+  ];
+
+  const buildDrilldownUrl = (path, extra = {}) => {
+    const params = new URLSearchParams();
+
+    if (country !== 'All') params.set('country', country);
+    if (department !== 'All') params.set('department', department);
+    if (period !== 'All') params.set('period', period);
+
+    Object.entries(extra).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.set(key, String(value));
+      }
+    });
+
+    const query = params.toString();
+    navigate(query ? `${path}?${query}` : path);
+  };
+
+  const resetFilters = () => {
+    setPeriod('12M');
+    setCountry('All');
+    setDepartment('All');
+  };
+
+  if (isLoading) {
     return (
       <Box
         sx={{
+          minHeight: 350,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          minHeight: 300,
         }}
       >
         <CircularProgress />
@@ -176,82 +420,106 @@ export default function DashboardPage() {
     );
   }
 
-  // Display an error if any analytics API fails.
-  if (isPayrollError || isHeadcountError || isSalaryError) {
+  if (hasError) {
     return (
       <Alert severity="error">
-        Failed to load dashboard analytics.{' '}
-        {payrollError?.message || 'Please check the backend and try again.'}
+        Unable to load dashboard analytics. Please check that the backend is
+        running and try again.
       </Alert>
     );
   }
 
-  // Exclude the inconsistent India + GBP combination for now.
-  const filteredPayrollSummary = payrollSummary.filter(
-    (item) =>
-      !(item.country === 'India' && item.currencyCode === 'GBP')
-  );
-
-  const filteredSalaryStatistics = salaryStatistics.filter(
-    (item) =>
-      !(item.country === 'India' && item.currencyCode === 'GBP')
-  );
-
-  // Calculate KPI values from the API responses.
-  const activeEmployees = headcountSummary.reduce(
-    (total, item) => total + Number(item.employeeCount),
-    0
-  );
-
-  const countriesCovered = new Set(
-    headcountSummary.map((item) => item.country)
-  ).size;
-
-  const payrollGroups = filteredPayrollSummary.length;
-  const salaryGroups = filteredSalaryStatistics.length;
-
-  // Transform headcount data for the stacked bar chart.
-  const departmentHeadcount = headcountSummary.reduce(
-    (result, item) => {
-      let department = result.find(
-        (entry) => entry.department === item.department
-      );
-
-      if (!department) {
-        department = {
-          department: item.department,
-        };
-
-        result.push(department);
-      }
-
-      department[item.country] = Number(item.employeeCount);
-
-      return result;
-    },
-    []
-  );
-
   return (
     <Box>
-      {/* PAGE INTRODUCTION */}
+      {/* PAGE HEADING */}
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" fontWeight={700}>
-          HR Analytics Dashboard
-        </Typography>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h4" fontWeight={750}>
+            HR Analytics Dashboard
+          </Typography>
 
-        <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-          Organization-wide salary and workforce insights
-        </Typography>
+          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+            Organization-wide salary and workforce insights
+          </Typography>
+        </Box>
+
+        {/* FILTERS BELOW HEADING */}
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+        >
+          <FormControl size="small" sx={{ minWidth: 145 }}>
+            <InputLabel>Time Period</InputLabel>
+            <Select
+              value={period}
+              label="Time Period"
+              onChange={(event) => setPeriod(event.target.value)}
+            >
+              <MenuItem value="3M">Last 3 months</MenuItem>
+              <MenuItem value="6M">Last 6 months</MenuItem>
+              <MenuItem value="12M">Last 12 months</MenuItem>
+              <MenuItem value="All">All time</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" sx={{ minWidth: 145 }}>
+            <InputLabel>Country</InputLabel>
+            <Select
+              value={country}
+              label="Country"
+              onChange={(event) => setCountry(event.target.value)}
+            >
+              <MenuItem value="All">All Countries</MenuItem>
+              {countries.map((item) => (
+                <MenuItem key={item} value={item}>
+                  {item}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" sx={{ minWidth: 155 }}>
+            <InputLabel>Department</InputLabel>
+            <Select
+              value={department}
+              label="Department"
+              onChange={(event) => setDepartment(event.target.value)}
+            >
+              <MenuItem value="All">All Departments</MenuItem>
+              {departments.map((item) => (
+                <MenuItem key={item} value={item}>
+                  {item}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={resetFilters}
+            sx={{
+              minWidth: 'auto',
+              height: 40,
+              px: 1.5,
+              textTransform: 'none',
+            }}
+          >
+            Reset Filters
+          </Button>
+        </Stack>
       </Box>
 
-      {/* KPI CARDS */}
-      <Grid container spacing={2.5} sx={{ mb: 4 }}>
+      {/* FOUR KPI CARDS */}
+      <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <KpiCard
             title="Active Employees"
             value={formatNumber(activeEmployees)}
-            subtitle="Across the organization"
+            subtitle="Based on current filters"
             icon={GroupsOutlined}
           />
         </Grid>
@@ -269,253 +537,296 @@ export default function DashboardPage() {
           <KpiCard
             title="Payroll Groups"
             value={formatNumber(payrollGroups)}
-            subtitle="Separate country currencies"
+            subtitle="Country and currency groups"
             icon={AccountBalanceOutlined}
           />
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <KpiCard
-            title="Salary Groups"
-            value={formatNumber(salaryGroups)}
-            subtitle="Country and currency combinations"
+            title="Salary Revisions"
+            value={formatNumber(salaryRevisions)}
+            subtitle="Recorded salary revisions"
             icon={InsightsOutlined}
           />
         </Grid>
       </Grid>
 
-      {/* PAYROLL AND HEADCOUNT CHARTS */}
+      {/* FOUR CHARTS */}
       <Grid container spacing={2.5}>
-        {/* ANNUAL PAYROLL */}
+        {/* CHART 1 */}
         <Grid size={{ xs: 12, lg: 6 }}>
           <ChartCard
             title="Annual Payroll by Country"
-            subtitle="Annual payroll totals in each country's local currency"
+            subtitle="Annual payroll in each country's local currency"
+            action={
+              <Button
+                size="small"
+                onClick={() => buildDrilldownUrl('/salary-management')}
+              >
+                View salaries
+              </Button>
+            }
           >
-            <Box sx={{ width: '100%', height: 340 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={filteredPayrollSummary}
-                  layout="vertical"
-                  margin={{ top: 10, right: 25, left: 10, bottom: 10 }}
-                >
-                  <CartesianGrid
-                    stroke="#E9E2DC"
-                    strokeDasharray="3 3"
-                    horizontal={false}
-                  />
+            {filteredPayroll.length === 0 ? (
+              <EmptyChart />
+            ) : (
+              <Box sx={{ width: '100%', height: 330 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={filteredPayroll}
+                    layout="vertical"
+                    margin={{ top: 10, right: 25, left: 10, bottom: 10 }}
+                    onClick={(state) => {
+                      const selected =
+                        state?.activePayload?.[0]?.payload;
 
-                  <XAxis
-                    type="number"
-                    tickFormatter={formatNumber}
-                    tick={{ fontSize: 12, fill: '#77716B' }}
-                  />
-
-                  <YAxis
-                    type="category"
-                    dataKey="country"
-                    width={85}
-                    tick={{ fontSize: 12, fill: '#77716B' }}
-                  />
-
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #E9E2DC',
-                      borderRadius: 10,
+                      if (selected?.country) {
+                        buildDrilldownUrl('/salary-management', {
+                          country: selected.country,
+                        });
+                      }
                     }}
-                    formatter={(value, name, item) => [
-                      formatCurrency(
-                        value,
-                        item.payload.currencyCode
-                      ),
-                      'Annual Payroll',
-                    ]}
-                  />
-
-                  <Bar
-                    dataKey="totalAnnualPayroll"
-                    name="Annual Payroll"
-                    fill={chartColors.terracotta}
-                    radius={[0, 6, 6, 0]}
-                    barSize={24}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </Box>
+                  >
+                    <CartesianGrid
+                      stroke="#E9E2DC"
+                      strokeDasharray="3 3"
+                      horizontal={false}
+                    />
+                    <XAxis type="number" tickFormatter={formatNumber} />
+                    <YAxis type="category" dataKey="country" width={85} />
+                    <Tooltip
+                      formatter={(value, name, item) => [
+                        formatCurrency(
+                          value,
+                          item.payload.currencyCode
+                        ),
+                        'Annual Payroll',
+                      ]}
+                    />
+                    <Bar
+                      dataKey="totalAnnualPayroll"
+                      fill={chartPalette[0]}
+                      radius={[0, 6, 6, 0]}
+                      barSize={24}
+                      cursor="pointer"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            )}
           </ChartCard>
         </Grid>
 
-        {/* EMPLOYEE HEADCOUNT */}
+        {/* CHART 2 */}
         <Grid size={{ xs: 12, lg: 6 }}>
           <ChartCard
             title="Employee Headcount by Department"
-            subtitle="Active employee distribution across departments and countries"
+            subtitle="Active employee distribution across departments"
+            action={
+              <Button
+                size="small"
+                onClick={() => buildDrilldownUrl('/employees')}
+              >
+                View employees
+              </Button>
+            }
           >
-            <Box sx={{ width: '100%', height: 340 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={departmentHeadcount}
-                  margin={{ top: 10, right: 15, left: 0, bottom: 45 }}
-                >
-                  <CartesianGrid
-                    stroke="#E9E2DC"
-                    strokeDasharray="3 3"
-                    vertical={false}
-                  />
-
-                  <XAxis
-                    dataKey="department"
-                    tick={{ fontSize: 11, fill: '#77716B' }}
-                    angle={-25}
-                    textAnchor="end"
-                    interval={0}
-                  />
-
-                  <YAxis
-                    allowDecimals={false}
-                    tick={{ fontSize: 12, fill: '#77716B' }}
-                  />
-
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #E9E2DC',
-                      borderRadius: 10,
-                    }}
-                    formatter={(value) => [
-                      formatNumber(value),
-                      'Employees',
-                    ]}
-                  />
-
-                  <Legend />
-
-                  <Bar
-                    dataKey="Germany"
-                    stackId="countries"
-                    fill={chartColors.terracotta}
-                  />
-
-                  <Bar
-                    dataKey="India"
-                    stackId="countries"
-                    fill={chartColors.sage}
-                  />
-
-                  <Bar
-                    dataKey="UK"
-                    stackId="countries"
-                    fill={chartColors.dustyBlue}
-                  />
-
-                  <Bar
-                    dataKey="USA"
-                    stackId="countries"
-                    fill={chartColors.ochre}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </Box>
-          </ChartCard>
-        </Grid>
-      </Grid>
-
-      {/* SALARY STATISTICS */}
-      <Box sx={{ mt: 4, mb: 2 }}>
-        <Typography variant="h5" fontWeight={600}>
-          Salary Statistics by Country
-        </Typography>
-
-        <Typography color="text.secondary" variant="body2" sx={{ mt: 0.5 }}>
-          Average, median, minimum and maximum annual salaries in local currency
-        </Typography>
-      </Box>
-
-      <Grid container spacing={2.5}>
-        {filteredSalaryStatistics.map((item) => (
-          <Grid
-            key={`${item.country}-${item.currencyCode}`}
-            size={{ xs: 12, md: 6 }}
-          >
-            <ChartCard
-              title={`${item.country} (${item.currencyCode})`}
-              subtitle="Annual salary comparison"
-            >
-              <Box sx={{ width: '100%', height: 300 }}>
+            {departmentHeadcount.length === 0 ? (
+              <EmptyChart />
+            ) : (
+              <Box sx={{ width: '100%', height: 330 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={[
-                      {
-                        metric: 'Annual Salary',
-                        Average: Number(item.averageSalary),
-                        Median: Number(item.medianSalary),
-                        Minimum: Number(item.minimumSalary),
-                        Maximum: Number(item.maximumSalary),
-                      },
-                    ]}
-                    margin={{ top: 15, right: 10, left: 0, bottom: 10 }}
+                    data={departmentHeadcount}
+                    margin={{ top: 10, right: 15, left: 0, bottom: 45 }}
+                    onClick={(state) => {
+                      const selected =
+                        state?.activePayload?.[0]?.payload;
+
+                      if (selected?.department) {
+                        buildDrilldownUrl('/employees', {
+                          department: selected.department,
+                        });
+                      }
+                    }}
                   >
                     <CartesianGrid
                       stroke="#E9E2DC"
                       strokeDasharray="3 3"
                       vertical={false}
                     />
-
                     <XAxis
-                      dataKey="metric"
-                      tick={{ fontSize: 12, fill: '#77716B' }}
+                      dataKey="department"
+                      angle={-25}
+                      textAnchor="end"
+                      interval={0}
+                      tick={{ fontSize: 11 }}
                     />
-
-                    <YAxis
-                      tickFormatter={formatNumber}
-                      width={85}
-                      tick={{ fontSize: 11, fill: '#77716B' }}
-                    />
-
+                    <YAxis allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#FFFFFF',
-                        border: '1px solid #E9E2DC',
-                        borderRadius: 10,
-                      }}
-                      formatter={(value, name) => [
-                        formatCurrency(value, item.currencyCode),
-                        name,
+                      formatter={(value) => [
+                        formatNumber(value),
+                        'Employees',
                       ]}
                     />
-
                     <Legend />
+                    {countries.map((item, index) => (
+                      <Bar
+                        key={item}
+                        dataKey={item}
+                        name={item}
+                        stackId="countries"
+                        fill={chartPalette[index % chartPalette.length]}
+                        cursor="pointer"
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            )}
+          </ChartCard>
+        </Grid>
 
-                    <Bar
-                      dataKey="Average"
-                      fill={chartColors.terracotta}
-                      radius={[4, 4, 0, 0]}
+        {/* CHART 3 */}
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <ChartCard
+            title="Salary Revision Trend"
+            subtitle="Salary revisions recorded over time"
+            action={
+              <Button
+                size="small"
+                onClick={() => buildDrilldownUrl('/salary-management')}
+              >
+                View revisions
+              </Button>
+            }
+          >
+            {salaryTrend.length === 0 ? (
+              <EmptyChart />
+            ) : (
+              <Box sx={{ width: '100%', height: 330 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={salaryTrend}
+                    margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
+                    onClick={(state) => {
+                      const selected =
+                        state?.activePayload?.[0]?.payload;
+
+                      if (selected) {
+                        buildDrilldownUrl('/salary-management', {
+                          date:
+                            selected.month ??
+                            selected.period ??
+                            selected.date,
+                        });
+                      }
+                    }}
+                  >
+                    <CartesianGrid
+                      stroke="#E9E2DC"
+                      strokeDasharray="3 3"
                     />
-
-                    <Bar
-                      dataKey="Median"
-                      fill={chartColors.sage}
-                      radius={[4, 4, 0, 0]}
+                    <XAxis
+                      dataKey="month"
+                      tick={{ fontSize: 11 }}
                     />
-
-                    <Bar
-                      dataKey="Minimum"
-                      fill={chartColors.dustyBlue}
-                      radius={[4, 4, 0, 0]}
+                    <YAxis allowDecimals={false} />
+                    <Tooltip
+                      formatter={(value) => [
+                        formatNumber(value),
+                        'Revisions',
+                      ]}
                     />
+                    <Line
+                      type="monotone"
+                      dataKey="revisionCount"
+                      name="Salary Revisions"
+                      stroke={chartPalette[0]}
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 7, cursor: 'pointer' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Box>
+            )}
+          </ChartCard>
+        </Grid>
 
+        {/* CHART 4 */}
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <ChartCard
+            title="Salary Statistics by Country"
+            subtitle={
+              selectedStatistics
+                ? `Annual salary values in ${selectedStatistics.currencyCode}`
+                : 'Average, median, minimum and maximum annual salary'
+            }
+            action={
+              <FormControl size="small" sx={{ minWidth: 125 }}>
+                <InputLabel>Country</InputLabel>
+                <Select
+                  value={activeStatisticsCountry}
+                  label="Country"
+                  onChange={(event) =>
+                    setSelectedStatisticsCountry(event.target.value)
+                  }
+                >
+                  {statisticsCountries.map((item) => (
+                    <MenuItem key={item.country} value={item.country}>
+                      {item.country}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            }
+          >
+            {!selectedStatistics ? (
+              <EmptyChart />
+            ) : (
+              <Box sx={{ width: '100%', height: 330 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={statisticsChartData}
+                    margin={{ top: 15, right: 15, left: 5, bottom: 10 }}
+                    onClick={() =>
+                      buildDrilldownUrl('/reports', {
+                        country: activeStatisticsCountry,
+                      })
+                    }
+                  >
+                    <CartesianGrid
+                      stroke="#E9E2DC"
+                      strokeDasharray="3 3"
+                      vertical={false}
+                    />
+                    <XAxis dataKey="metric" />
+                    <YAxis tickFormatter={formatNumber} />
+                    <Tooltip
+                      formatter={(value) => [
+                        formatCurrency(
+                          value,
+                          selectedStatistics.currencyCode
+                        ),
+                        'Annual Salary',
+                      ]}
+                    />
                     <Bar
-                      dataKey="Maximum"
-                      fill={chartColors.ochre}
-                      radius={[4, 4, 0, 0]}
+                      dataKey="value"
+                      name="Annual Salary"
+                      fill={chartPalette[1]}
+                      radius={[6, 6, 0, 0]}
+                      barSize={42}
+                      cursor="pointer"
                     />
                   </BarChart>
                 </ResponsiveContainer>
               </Box>
-            </ChartCard>
-          </Grid>
-        ))}
+            )}
+          </ChartCard>
+        </Grid>
       </Grid>
     </Box>
   );

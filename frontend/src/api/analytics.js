@@ -1,18 +1,6 @@
-import axios from "axios";
-
-const API_BASE_URL = "http://localhost:8081/api/analytics";
-
-export const getPayrollSummary = async () => {
-  const response = await axios.get(`${API_BASE_URL}/payroll-summary`);
-  return response.data;
-};
-
-export const getHeadcountSummary = async () => {
-  const response = await axios.get(`${API_BASE_URL}/headcount-summary`);
-  return response.data;
-};
-
-export const getSalaryStatistics = async () => {
-  const response = await axios.get(`${API_BASE_URL}/salary-statistics`);
-  return response.data;
-};
+import axios from 'axios';
+const api = axios.create({ baseURL: 'http://localhost:8081/api/analytics' });
+export const getPayrollSummary = async () => (await api.get('/payroll-summary')).data;
+export const getHeadcountSummary = async () => (await api.get('/headcount-summary')).data;
+export const getSalaryStatistics = async () => (await api.get('/salary-statistics')).data;
+export const getDashboardAnalytics = async (params = {}) => (await api.get('/dashboard', { params })).data;

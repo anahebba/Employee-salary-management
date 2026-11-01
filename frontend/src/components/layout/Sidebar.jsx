@@ -3,6 +3,7 @@ import {
   DashboardOutlined,
   GroupsOutlined,
    PaymentsOutlined,
+  AssessmentOutlined,
 } from '@mui/icons-material';
 
 import {
@@ -31,11 +32,8 @@ const navigationItems = [
     path: '/employees',
     icon: <GroupsOutlined />,
   },
-  {
-  label: 'Salary Management',
-  path: '/salary-management',
-  icon: <PaymentsOutlined />,
-},
+  { label: 'Salary Management', path: '/salary-management', icon: <PaymentsOutlined /> },
+  { label: 'Reports', path: '/reports', icon: <AssessmentOutlined /> },
 ];
 
 export default function Sidebar() {
@@ -51,8 +49,9 @@ export default function Sidebar() {
         '& .MuiDrawer-paper': {
           width: drawerWidth,
           boxSizing: 'border-box',
-          borderRight: '1px solid #E2E8F0',
-          backgroundColor: '#FFFFFF',
+          borderRight: '1px solid',
+          borderColor: 'divider',
+          backgroundColor: 'background.paper',
         },
       }}
     >
@@ -104,28 +103,28 @@ export default function Sidebar() {
                   transition: 'all 0.2s ease',
 
                   '&:hover': {
-                    backgroundColor: '#F1F5F9',
+                    backgroundColor: 'action.hover',
                   },
 
                   '&.Mui-selected': {
-                    backgroundColor: '#EFF6FF',
-                    color: '#2563EB',
+                    backgroundColor: 'primary.light',
+                    color: 'primary.dark',
                     fontWeight: 700,
                   },
 
                   '&.Mui-selected:hover': {
-                    backgroundColor: '#DBEAFE',
+                    backgroundColor: 'primary.light',
                   },
 
                   '&.Mui-selected .MuiListItemIcon-root': {
-                    color: '#2563EB',
+                    color: 'primary.dark',
                   },
                 }}
               >
                 <ListItemIcon
                   sx={{
                     minWidth: 40,
-                    color: selected ? '#2563EB' : '#64748B',
+                    color: selected ? 'primary.dark' : 'text.secondary',
                   }}
                 >
                   {item.icon}

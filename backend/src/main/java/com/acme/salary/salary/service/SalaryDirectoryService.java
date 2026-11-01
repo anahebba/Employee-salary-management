@@ -29,11 +29,12 @@ public class SalaryDirectoryService {
 
     @Transactional(readOnly = true)
     public Page<SalaryDirectoryResponse> getCurrentSalaries(
+            String country, String department, String currencyCode, String search,
             Pageable pageable) {
 
         return salaryDirectoryRepository.findCurrentSalaries(
-                LocalDate.now(),
-                pageable
+                LocalDate.now(), country, department, currencyCode,
+                (search == null || search.isBlank()) ? null : search.trim(), pageable
         );
     }
 

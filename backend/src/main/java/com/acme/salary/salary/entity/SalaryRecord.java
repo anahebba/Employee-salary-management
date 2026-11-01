@@ -30,6 +30,12 @@ public class SalaryRecord {
     @Column(name = "effective_to")
     private LocalDate effectiveTo;
 
+    @Column(name = "revision_reason", nullable = false, length = 60)
+    private String revisionReason = "INITIAL";
+
+    @Column(name = "revision_notes", length = 500)
+    private String revisionNotes;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -81,6 +87,11 @@ public class SalaryRecord {
     public void setEffectiveTo(LocalDate effectiveTo) {
         this.effectiveTo = effectiveTo;
     }
+
+    public String getRevisionReason() { return revisionReason; }
+    public void setRevisionReason(String revisionReason) { this.revisionReason = revisionReason; }
+    public String getRevisionNotes() { return revisionNotes; }
+    public void setRevisionNotes(String revisionNotes) { this.revisionNotes = revisionNotes; }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

@@ -76,6 +76,8 @@ public class SalaryRecordService {
         newRecord.setAnnualSalary(request.annualSalary());
         newRecord.setCurrencyCode(request.currencyCode());
         newRecord.setEffectiveFrom(request.effectiveFrom());
+        newRecord.setRevisionReason(request.revisionReason());
+        newRecord.setRevisionNotes(request.revisionNotes());
 
         SalaryRecord savedRecord =
                 salaryRecordRepository.save(newRecord);
@@ -91,7 +93,9 @@ public class SalaryRecordService {
                 record.getCurrencyCode(),
                 record.getEffectiveFrom(),
                 record.getEffectiveTo(),
-                record.getCreatedAt()
+                record.getCreatedAt(),
+                record.getRevisionReason(),
+                record.getRevisionNotes()
         );
     }
 }

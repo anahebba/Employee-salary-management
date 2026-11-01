@@ -1,3 +1,4 @@
+
 package com.acme.salary.salary.repository;
 
 import com.acme.salary.salary.dto.SalaryDirectoryResponse;
@@ -32,6 +33,16 @@ public interface SalaryDirectoryRepository
             WHERE e.employmentStatus = 'ACTIVE'
               AND s.effectiveFrom <= :reportDate
               AND (s.effectiveTo IS NULL OR s.effectiveTo >= :reportDate)
+              AND (:country IS NULL OR e.country = :country)
+              AND (:department IS NULL OR e.department = :department)
+              AND (:currencyCode IS NULL OR s.currencyCode = :currencyCode)
+              AND (
+                  CAST(:search AS string) IS NULL
+                  OR LOWER(CONCAT(e.firstName, ' ', e.lastName))
+                     LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                  OR LOWER(e.employeeCode)
+                     LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+              )
             ORDER BY e.firstName ASC, e.lastName ASC
             """,
             countQuery = """
@@ -41,10 +52,24 @@ public interface SalaryDirectoryRepository
             WHERE e.employmentStatus = 'ACTIVE'
               AND s.effectiveFrom <= :reportDate
               AND (s.effectiveTo IS NULL OR s.effectiveTo >= :reportDate)
+              AND (:country IS NULL OR e.country = :country)
+              AND (:department IS NULL OR e.department = :department)
+              AND (:currencyCode IS NULL OR s.currencyCode = :currencyCode)
+              AND (
+                  CAST(:search AS string) IS NULL
+                  OR LOWER(CONCAT(e.firstName, ' ', e.lastName))
+                     LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                  OR LOWER(e.employeeCode)
+                     LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+              )
             """
     )
     Page<SalaryDirectoryResponse> findCurrentSalaries(
             @Param("reportDate") LocalDate reportDate,
+            @Param("country") String country,
+            @Param("department") String department,
+            @Param("currencyCode") String currencyCode,
+            @Param("search") String search,
             Pageable pageable
     );
 }

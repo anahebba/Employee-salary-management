@@ -21,6 +21,12 @@ import {
   Snackbar,
   Chip,
   Stack,
+  TextField,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 
 import {
@@ -28,6 +34,7 @@ import {
   getSalaryDirectorySummary,
   getEmployeesWithoutCurrentSalary,
   createSalaryRecord,
+  getSalaryHistory,
 } from '../../api/salary';
 
 import AddSalaryDialog from '../../components/salary/AddSalaryDialog';
@@ -127,6 +134,13 @@ export default function SalaryManagementPage() {
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [directorySearch, setDirectorySearch] = useState('');
+  const [countryFilter, setCountryFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [currencyFilter, setCurrencyFilter] = useState('');
+  const [historyEmployee, setHistoryEmployee] = useState(null);
+  const [salaryHistory, setSalaryHistory] = useState([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -143,6 +157,8 @@ export default function SalaryManagementPage() {
   // Add salary dialog state
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [salaryDialogOpen, setSalaryDialogOpen] = useState(false);
+  const [dialogReason, setDialogReason] = useState('INITIAL');
+  const [dialogTitle, setDialogTitle] = useState('Add Salary');
   const [successMessage, setSuccessMessage] = useState('');
   const [saveError, setSaveError] = useState('');
 
@@ -156,6 +172,10 @@ export default function SalaryManagementPage() {
         const data = await getSalaryDirectory({
           page,
           size: rowsPerPage,
+          search: directorySearch || undefined,
+          country: countryFilter || undefined,
+          department: departmentFilter || undefined,
+          currencyCode: currencyFilter || undefined,
         });
 
         setSalaryData(data);
@@ -168,7 +188,7 @@ export default function SalaryManagementPage() {
     };
 
     fetchSalaries();
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage, directorySearch, countryFilter, departmentFilter, currencyFilter]);
 
   // Fetch salary summary
   useEffect(() => {
@@ -225,6 +245,8 @@ export default function SalaryManagementPage() {
   // Open Add Salary dialog
   const handleOpenSalaryDialog = (employee) => {
     setSelectedEmployee(employee);
+    setDialogReason('INITIAL');
+    setDialogTitle('Add Salary');
     setSaveError('');
     setSalaryDialogOpen(true);
   };
@@ -250,6 +272,8 @@ export default function SalaryManagementPage() {
       annualSalary: Number(formData.get('annualSalary')),
       currencyCode: formData.get('currencyCode'),
       effectiveFrom: formData.get('effectiveFrom'),
+      revisionReason: formData.get('revisionReason'),
+      revisionNotes: formData.get('revisionNotes') || null,
     };
 
     try {
@@ -286,6 +310,17 @@ export default function SalaryManagementPage() {
         err.response?.data?.message ||
         'Unable to add salary record. Please check the entered details.'
       );
+    }
+  };
+
+  const handleOpenHistory = async (employee) => {
+    try {
+      const history = await getSalaryHistory(employee.employeeId);
+      setHistoryEmployee(employee);
+      setSalaryHistory(history);
+      setHistoryOpen(true);
+    } catch (err) {
+      setSaveError('Unable to load salary history.');
     }
   };
 
@@ -365,6 +400,18 @@ export default function SalaryManagementPage() {
             </Alert>
           )}
 
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', px: 2.5, pb: 2 }}>
+            <TextField size="small" label="Search employee" value={directorySearch} onChange={(e) => { setDirectorySearch(e.target.value); setPage(0); }} sx={{ minWidth: 220 }} />
+            <TextField size="small" select label="Country" value={countryFilter} onChange={(e) => { setCountryFilter(e.target.value); setPage(0); }} sx={{ minWidth: 150 }}>
+              <MenuItem value="">All countries</MenuItem><MenuItem value="India">India</MenuItem><MenuItem value="USA">USA</MenuItem><MenuItem value="UK">UK</MenuItem><MenuItem value="Germany">Germany</MenuItem>
+            </TextField>
+            <TextField size="small" select label="Department" value={departmentFilter} onChange={(e) => { setDepartmentFilter(e.target.value); setPage(0); }} sx={{ minWidth: 170 }}>
+              <MenuItem value="">All departments</MenuItem><MenuItem value="Engineering">Engineering</MenuItem><MenuItem value="Finance">Finance</MenuItem><MenuItem value="Human Resources">Human Resources</MenuItem><MenuItem value="Marketing">Marketing</MenuItem>
+            </TextField>
+            <TextField size="small" select label="Currency" value={currencyFilter} onChange={(e) => { setCurrencyFilter(e.target.value); setPage(0); }} sx={{ minWidth: 130 }}>
+              <MenuItem value="">All currencies</MenuItem><MenuItem value="INR">INR</MenuItem><MenuItem value="USD">USD</MenuItem><MenuItem value="GBP">GBP</MenuItem><MenuItem value="EUR">EUR</MenuItem>
+            </TextField>
+          </Box>
           {loading ? (
             <Box
               sx={{
@@ -401,13 +448,14 @@ export default function SalaryManagementPage() {
                       <TableCell sx={tableHeaderSx}>
                         Effective From
                       </TableCell>
+                      <TableCell align="right" sx={tableHeaderSx}>Actions</TableCell>
                     </TableRow>
                   </TableHead>
 
                   <TableBody>
                     {salaryData.content.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                        <TableCell colSpan={8} align="center" sx={{ py: 5 }}>
                           <Typography color="text.secondary">
                             No current salary records found.
                           </Typography>
@@ -454,6 +502,12 @@ export default function SalaryManagementPage() {
                             <Typography variant="body2" color="text.secondary">
                               {employee.effectiveFrom}
                             </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Stack direction="row" spacing={1} justifyContent="flex-end">
+                              <Button size="small" onClick={() => { setSelectedEmployee(employee); setDialogReason('ANNUAL_INCREMENT'); setDialogTitle('Revise Salary'); setSaveError(''); setSalaryDialogOpen(true); }}>Revise salary</Button>
+                              <Button size="small" color="inherit" onClick={() => handleOpenHistory(employee)}>History</Button>
+                            </Stack>
                           </TableCell>
                         </TableRow>
                       ))
@@ -624,7 +678,32 @@ export default function SalaryManagementPage() {
         employee={selectedEmployee}
         onClose={handleCloseSalaryDialog}
         onSubmit={handleAddSalary}
+        title={dialogTitle}
+        defaultReason={dialogReason}
       />
+
+      <Dialog open={historyOpen} onClose={() => setHistoryOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>Salary history — {historyEmployee?.firstName} {historyEmployee?.lastName}</DialogTitle>
+        <DialogContent>
+          <TableContainer><Table size="small"><TableHead><TableRow>
+            {['Annual salary','Change','Currency','Effective from','Effective to','Reason','Notes'].map((h) => <TableCell key={h}>{h}</TableCell>)}
+          </TableRow></TableHead><TableBody>
+            {salaryHistory.map((record, index) => {
+              const previous = salaryHistory[index + 1];
+              const change = previous && previous.currencyCode === record.currencyCode
+                ? ((Number(record.annualSalary) - Number(previous.annualSalary)) / Number(previous.annualSalary)) * 100
+                : null;
+              return <TableRow key={record.id}>
+                <TableCell>{Number(record.annualSalary).toLocaleString()} </TableCell>
+                <TableCell>{change === null ? '—' : `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`}</TableCell>
+                <TableCell>{record.currencyCode}</TableCell>
+                <TableCell>{record.effectiveFrom}</TableCell><TableCell>{record.effectiveTo || 'Current / open-ended'}</TableCell>
+                <TableCell>{String(record.revisionReason || '').replaceAll('_',' ')}</TableCell><TableCell>{record.revisionNotes || '—'}</TableCell>
+              </TableRow>;
+            })}
+          </TableBody></Table></TableContainer>
+        </DialogContent><DialogActions><Button onClick={() => setHistoryOpen(false)}>Close</Button></DialogActions>
+      </Dialog>
 
       {/* Success notification */}
       <Snackbar

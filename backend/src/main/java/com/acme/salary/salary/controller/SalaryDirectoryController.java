@@ -23,9 +23,14 @@ public class SalaryDirectoryController {
 
     @GetMapping
     public Page<SalaryDirectoryResponse> getSalaryDirectory(
+            @RequestParam(required = false) String country,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String currencyCode,
+            @RequestParam(required = false) String search,
             @PageableDefault(size = 10) Pageable pageable) {
 
-        return salaryDirectoryService.getCurrentSalaries(pageable);
+        return salaryDirectoryService.getCurrentSalaries(
+                country, department, currencyCode, search, pageable);
     }
 
     @GetMapping("/summary")

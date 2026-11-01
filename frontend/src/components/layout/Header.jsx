@@ -12,6 +12,8 @@ import { useLocation } from 'react-router-dom';
 const pageTitles = {
   '/': 'Dashboard',
   '/employees': 'Employee Management',
+  '/salary-management': 'Salary Management',
+  '/reports': 'Reports',
 };
 
 export default function Header() {
@@ -26,8 +28,9 @@ export default function Header() {
       sx={{
         width: { xs: '100%', md: 'calc(100% - 250px)' },
         ml: { xs: 0, md: '250px' },
-        borderBottom: '1px solid #E2E8F0',
-        backgroundColor: '#FFFFFF',
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        backgroundColor: 'background.paper',
         zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
