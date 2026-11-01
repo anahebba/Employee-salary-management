@@ -1,5 +1,6 @@
 
 import { useQuery } from '@tanstack/react-query';
+import { useTheme } from '@mui/material/styles';
 
 import {
   AccountBalanceOutlined,
@@ -42,6 +43,7 @@ const formatNumber = (value) =>
     maximumFractionDigits: 0,
   });
 
+// Consistent currency formatting.
 const formatCurrency = (value, currencyCode) =>
   `${currencyCode} ${Number(value).toLocaleString('en-US', {
     maximumFractionDigits: 0,
@@ -123,6 +125,10 @@ function ChartCard({ title, subtitle, children }) {
 }
 
 export default function DashboardPage() {
+  // Access the centralized MUI theme colours.
+  const theme = useTheme();
+  const chartColors = theme.palette.chart;
+
   // Fetch payroll summary.
   const {
     data: payrollSummary = [],
@@ -180,6 +186,17 @@ export default function DashboardPage() {
     );
   }
 
+  // Exclude the inconsistent India + GBP combination for now.
+  const filteredPayrollSummary = payrollSummary.filter(
+    (item) =>
+      !(item.country === 'India' && item.currencyCode === 'GBP')
+  );
+
+  const filteredSalaryStatistics = salaryStatistics.filter(
+    (item) =>
+      !(item.country === 'India' && item.currencyCode === 'GBP')
+  );
+
   // Calculate KPI values from the API responses.
   const activeEmployees = headcountSummary.reduce(
     (total, item) => total + Number(item.employeeCount),
@@ -190,8 +207,30 @@ export default function DashboardPage() {
     headcountSummary.map((item) => item.country)
   ).size;
 
-  const payrollGroups = payrollSummary.length;
-  const salaryGroups = salaryStatistics.length;
+  const payrollGroups = filteredPayrollSummary.length;
+  const salaryGroups = filteredSalaryStatistics.length;
+
+  // Transform headcount data for the stacked bar chart.
+  const departmentHeadcount = headcountSummary.reduce(
+    (result, item) => {
+      let department = result.find(
+        (entry) => entry.department === item.department
+      );
+
+      if (!department) {
+        department = {
+          department: item.department,
+        };
+
+        result.push(department);
+      }
+
+      department[item.country] = Number(item.employeeCount);
+
+      return result;
+    },
+    []
+  );
 
   return (
     <Box>
@@ -247,6 +286,7 @@ export default function DashboardPage() {
 
       {/* PAYROLL AND HEADCOUNT CHARTS */}
       <Grid container spacing={2.5}>
+        {/* ANNUAL PAYROLL */}
         <Grid size={{ xs: 12, lg: 6 }}>
           <ChartCard
             title="Annual Payroll by Country"
@@ -255,26 +295,35 @@ export default function DashboardPage() {
             <Box sx={{ width: '100%', height: 340 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={payrollSummary}
+                  data={filteredPayrollSummary}
                   layout="vertical"
                   margin={{ top: 10, right: 25, left: 10, bottom: 10 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <CartesianGrid
+                    stroke="#E9E2DC"
+                    strokeDasharray="3 3"
+                    horizontal={false}
+                  />
 
                   <XAxis
                     type="number"
                     tickFormatter={formatNumber}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 12, fill: '#77716B' }}
                   />
 
                   <YAxis
                     type="category"
                     dataKey="country"
                     width={85}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 12, fill: '#77716B' }}
                   />
 
                   <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E9E2DC',
+                      borderRadius: 10,
+                    }}
                     formatter={(value, name, item) => [
                       formatCurrency(
                         value,
@@ -287,7 +336,7 @@ export default function DashboardPage() {
                   <Bar
                     dataKey="totalAnnualPayroll"
                     name="Annual Payroll"
-                    fill="#2563EB"
+                    fill={chartColors.terracotta}
                     radius={[0, 6, 6, 0]}
                     barSize={24}
                   />
@@ -297,6 +346,7 @@ export default function DashboardPage() {
           </ChartCard>
         </Grid>
 
+        {/* EMPLOYEE HEADCOUNT */}
         <Grid size={{ xs: 12, lg: 6 }}>
           <ChartCard
             title="Employee Headcount by Department"
@@ -305,14 +355,18 @@ export default function DashboardPage() {
             <Box sx={{ width: '100%', height: 340 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={headcountSummary}
+                  data={departmentHeadcount}
                   margin={{ top: 10, right: 15, left: 0, bottom: 45 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <CartesianGrid
+                    stroke="#E9E2DC"
+                    strokeDasharray="3 3"
+                    vertical={false}
+                  />
 
                   <XAxis
                     dataKey="department"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: '#77716B' }}
                     angle={-25}
                     textAnchor="end"
                     interval={0}
@@ -320,29 +374,45 @@ export default function DashboardPage() {
 
                   <YAxis
                     allowDecimals={false}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 12, fill: '#77716B' }}
                   />
 
                   <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E9E2DC',
+                      borderRadius: 10,
+                    }}
                     formatter={(value) => [
                       formatNumber(value),
                       'Employees',
                     ]}
-                    labelFormatter={(label, payload) =>
-                      payload?.[0]?.payload?.country
-                        ? `${label} — ${payload[0].payload.country}`
-                        : label
-                    }
                   />
 
                   <Legend />
 
                   <Bar
-                    dataKey="employeeCount"
-                    name="Employees"
-                    fill="#16A34A"
-                    radius={[5, 5, 0, 0]}
-                    barSize={28}
+                    dataKey="Germany"
+                    stackId="countries"
+                    fill={chartColors.terracotta}
+                  />
+
+                  <Bar
+                    dataKey="India"
+                    stackId="countries"
+                    fill={chartColors.sage}
+                  />
+
+                  <Bar
+                    dataKey="UK"
+                    stackId="countries"
+                    fill={chartColors.dustyBlue}
+                  />
+
+                  <Bar
+                    dataKey="USA"
+                    stackId="countries"
+                    fill={chartColors.ochre}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -363,7 +433,7 @@ export default function DashboardPage() {
       </Box>
 
       <Grid container spacing={2.5}>
-        {salaryStatistics.map((item) => (
+        {filteredSalaryStatistics.map((item) => (
           <Grid
             key={`${item.country}-${item.currencyCode}`}
             size={{ xs: 12, md: 6 }}
@@ -386,20 +456,29 @@ export default function DashboardPage() {
                     ]}
                     margin={{ top: 15, right: 10, left: 0, bottom: 10 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <CartesianGrid
+                      stroke="#E9E2DC"
+                      strokeDasharray="3 3"
+                      vertical={false}
+                    />
 
                     <XAxis
                       dataKey="metric"
-                      tick={{ fontSize: 12 }}
+                      tick={{ fontSize: 12, fill: '#77716B' }}
                     />
 
                     <YAxis
                       tickFormatter={formatNumber}
                       width={85}
-                      tick={{ fontSize: 11 }}
+                      tick={{ fontSize: 11, fill: '#77716B' }}
                     />
 
                     <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E9E2DC',
+                        borderRadius: 10,
+                      }}
                       formatter={(value, name) => [
                         formatCurrency(value, item.currencyCode),
                         name,
@@ -410,25 +489,25 @@ export default function DashboardPage() {
 
                     <Bar
                       dataKey="Average"
-                      fill="#2563EB"
+                      fill={chartColors.terracotta}
                       radius={[4, 4, 0, 0]}
                     />
 
                     <Bar
                       dataKey="Median"
-                      fill="#16A34A"
+                      fill={chartColors.sage}
                       radius={[4, 4, 0, 0]}
                     />
 
                     <Bar
                       dataKey="Minimum"
-                      fill="#EA580C"
+                      fill={chartColors.dustyBlue}
                       radius={[4, 4, 0, 0]}
                     />
 
                     <Bar
                       dataKey="Maximum"
-                      fill="#9333EA"
+                      fill={chartColors.ochre}
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>

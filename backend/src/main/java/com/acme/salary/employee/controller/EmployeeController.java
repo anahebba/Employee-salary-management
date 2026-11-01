@@ -1,16 +1,16 @@
+
 package com.acme.salary.employee.controller;
+
 import com.acme.salary.employee.dto.CreateEmployeeRequest;
 import com.acme.salary.employee.dto.EmployeeResponse;
 import com.acme.salary.employee.service.EmployeeService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.web.bind.annotation.RequestParam;
-import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/employees")
@@ -23,35 +23,26 @@ public class EmployeeController {
         this.employeeService = employeeService;
     }
 
-//    @GetMapping
-//    public List<EmployeeResponse> getAllEmployees() {
-//        return employeeService.findAll();
-//    }
-
-//    @GetMapping
-//    public Page<EmployeeResponse> getAllEmployees(Pageable pageable) {
-//        return employeeService.findAll(pageable);
-//    }
-//@GetMapping
-//public Page<EmployeeResponse> getAllEmployees(
-//        @PageableDefault(size = 10, sort = "firstName", direction = Sort.Direction.ASC)
-//        Pageable pageable) {
-//    return employeeService.findAll(pageable);
-//}
-
     @GetMapping
     public Page<EmployeeResponse> getAllEmployees(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String country,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String status,
-            @PageableDefault(size = 10, sort = "firstName", direction = Sort.Direction.ASC)
-            Pageable pageable) {
+            @PageableDefault(
+                    size = 10,
+                    sort = "firstName",
+                    direction = Sort.Direction.ASC
+            ) Pageable pageable) {
 
         return employeeService.findAll(
-                search, country, department, status, pageable);
+                search,
+                country,
+                department,
+                status,
+                pageable
+        );
     }
-
 
     @GetMapping("/{id}")
     public EmployeeResponse getEmployeeById(@PathVariable Long id) {

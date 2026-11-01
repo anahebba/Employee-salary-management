@@ -1,3 +1,4 @@
+
 package com.acme.salary.employee.specification;
 
 import com.acme.salary.employee.entity.Employee;
@@ -9,23 +10,80 @@ public class EmployeeSpecifications {
     private EmployeeSpecifications() {
     }
 
+
     public static Specification<Employee> hasSearch(String search) {
         return (root, query, criteriaBuilder) -> {
             if (search == null || search.isBlank()) {
                 return criteriaBuilder.conjunction();
             }
 
-            String pattern = "%" + search.trim().toLowerCase() + "%";
+            String normalizedSearch = search.trim().toLowerCase();
+            String pattern = "%" + normalizedSearch + "%";
 
             return criteriaBuilder.or(
+                    // First name
                     criteriaBuilder.like(
-                            criteriaBuilder.lower(root.get("firstName")), pattern),
+                            criteriaBuilder.lower(root.get("firstName")),
+                            pattern
+                    ),
+
+                    // Last name
                     criteriaBuilder.like(
-                            criteriaBuilder.lower(root.get("lastName")), pattern),
+                            criteriaBuilder.lower(root.get("lastName")),
+                            pattern
+                    ),
+
+                    // Full name: first name + space + last name
                     criteriaBuilder.like(
-                            criteriaBuilder.lower(root.get("email")), pattern),
+                            criteriaBuilder.lower(
+                                    criteriaBuilder.concat(
+                                            criteriaBuilder.concat(
+                                                    root.get("firstName"),
+                                                    " "
+                                            ),
+                                            root.get("lastName")
+                                    )
+                            ),
+                            pattern
+                    ),
+
+                    // Email
                     criteriaBuilder.like(
-                            criteriaBuilder.lower(root.get("employeeCode")), pattern)
+                            criteriaBuilder.lower(root.get("email")),
+                            pattern
+                    ),
+
+                    // Employee code
+                    criteriaBuilder.like(
+                            criteriaBuilder.lower(root.get("employeeCode")),
+                            pattern
+                    ),
+
+                    // Country
+                    criteriaBuilder.like(
+                            criteriaBuilder.lower(root.get("country")),
+                            pattern
+                    ),
+
+                    // Department
+                    criteriaBuilder.like(
+                            criteriaBuilder.lower(root.get("department")),
+                            pattern
+                    ),
+
+                    // Job title
+                    criteriaBuilder.like(
+                            criteriaBuilder.lower(root.get("jobTitle")),
+                            pattern
+                    ),
+
+                    // Employment status
+                    criteriaBuilder.like(
+                            criteriaBuilder.lower(
+                                    root.get("employmentStatus").as(String.class)
+                            ),
+                            pattern
+                    )
             );
         };
     }
@@ -36,7 +94,8 @@ public class EmployeeSpecifications {
                         ? criteriaBuilder.conjunction()
                         : criteriaBuilder.equal(
                         criteriaBuilder.lower(root.get("country")),
-                        country.trim().toLowerCase());
+                        country.trim().toLowerCase()
+                );
     }
 
     public static Specification<Employee> hasDepartment(String department) {
@@ -45,7 +104,8 @@ public class EmployeeSpecifications {
                         ? criteriaBuilder.conjunction()
                         : criteriaBuilder.equal(
                         criteriaBuilder.lower(root.get("department")),
-                        department.trim().toLowerCase());
+                        department.trim().toLowerCase()
+                );
     }
 
     public static Specification<Employee> hasStatus(String status) {
@@ -58,7 +118,9 @@ public class EmployeeSpecifications {
                     EmploymentStatus.valueOf(status.trim().toUpperCase());
 
             return criteriaBuilder.equal(
-                    root.get("employmentStatus"), employmentStatus);
+                    root.get("employmentStatus"),
+                    employmentStatus
+            );
         };
     }
 }

@@ -1,35 +1,38 @@
 
 import { useEffect, useState } from 'react';
 import {
+  Alert,
   Box,
-  Typography,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
+  Menu,
+  MenuItem,
   Paper,
-  TextField,
-  InputAdornment,
+  Snackbar,
+  Stack,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
   TablePagination,
-  Chip,
-  CircularProgress,
-  Alert,
-  Avatar,
-  Stack,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Button,
-  Snackbar,
-  IconButton,
+  TableRow,
+  TextField,
+  Typography,
 } from '@mui/material';
 
-import SearchIcon from '@mui/icons-material/Search';
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import AddIcon from '@mui/icons-material/Add';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined';
+import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
 
 import EmployeeForm from '../../components/employees/EmployeeForm';
 
@@ -37,13 +40,16 @@ import {
   getEmployees,
   createEmployee,
   updateEmployee,
+  deactivateEmployee,
 } from '../../api/employees';
 
 export default function EmployeesPage() {
-  const [search, setSearch] = useState('');
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -51,107 +57,60 @@ export default function EmployeesPage() {
 
   const [openForm, setOpenForm] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [menuEmployee, setMenuEmployee] = useState(null);
+
+  const [openStatusDialog, setOpenStatusDialog] = useState(false);
+  const [employeeToUpdate, setEmployeeToUpdate] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Fetch employees whenever pagination changes.
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const data = await getEmployees({
+        page,
+        size: rowsPerPage,
+        search: debouncedSearch.trim() || undefined,
+      });
+
+      setEmployees(data.content);
+      setTotalEmployees(data.totalElements);
+    } catch (err) {
+      console.error('Failed to fetch employees:', err);
+      setError(
+        err.response?.data?.message || 'Unable to load employees.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        setLoading(true);
-        setError('');
+  const timer = setTimeout(() => {
+    setDebouncedSearch(search);
+  }, 400);
 
-        const data = await getEmployees({
-          page,
-          size: rowsPerPage,
-        });
+  return () => clearTimeout(timer);
+}, [search]);
 
-        setEmployees(data.content);
-        setTotalEmployees(data.totalElements);
-      } catch (err) {
-        console.error('Failed to fetch employees:', err);
-        setError(
-          'Unable to load employees. Please check whether the backend is running.'
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     fetchEmployees();
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage, debouncedSearch]);
 
-  // Search currently filters the employees on the loaded page.
-  const filteredEmployees = employees.filter((employee) =>
-    `${employee.firstName} ${employee.lastName} ${employee.email} ${employee.department} ${employee.jobTitle}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
-
-  const getInitials = (employee) =>
-    `${employee.firstName?.[0] || ''}${employee.lastName?.[0] || ''}`.toUpperCase();
-
-  // Create a new employee.
-  const handleCreateEmployee = async (employeeData) => {
-    try {
-      await createEmployee(employeeData);
-
-      setOpenForm(false);
-      setSelectedEmployee(null);
-      setError('');
-      setSuccessMessage('Employee created successfully!');
-
-      const data = await getEmployees({
-        page,
-        size: rowsPerPage,
-      });
-
-      setEmployees(data.content);
-      setTotalEmployees(data.totalElements);
-    } catch (err) {
-      console.error('Failed to create employee:', err);
-      setError(
-        err.response?.data?.message || 'Unable to create employee.'
-      );
-    }
-  };
-
-  // Update an existing employee.
-  const handleUpdateEmployee = async (employeeData) => {
-    try {
-      await updateEmployee(selectedEmployee.id, employeeData);
-
-      setOpenForm(false);
-      setSelectedEmployee(null);
-      setError('');
-      setSuccessMessage('Employee updated successfully!');
-
-      const data = await getEmployees({
-        page,
-        size: rowsPerPage,
-      });
-
-      setEmployees(data.content);
-      setTotalEmployees(data.totalElements);
-    } catch (err) {
-      console.error('Failed to update employee:', err);
-      setError(
-        err.response?.data?.message || 'Unable to update employee.'
-      );
-    }
-  };
-
-  // Open the form in Add mode.
-  const handleOpenAddForm = () => {
+  const handleOpenCreateForm = () => {
     setSelectedEmployee(null);
-    setError('');
     setOpenForm(true);
   };
 
-  // Open the form in Edit mode.
   const handleOpenEditForm = (employee) => {
     setSelectedEmployee(employee);
-    setError('');
     setOpenForm(true);
+    handleCloseMenu();
   };
 
   const handleCloseForm = () => {
@@ -159,12 +118,112 @@ export default function EmployeesPage() {
     setSelectedEmployee(null);
   };
 
+  const handleCreateEmployee = async (employeeData) => {
+    try {
+      await createEmployee(employeeData);
+
+      handleCloseForm();
+      setSuccessMessage('Employee created successfully!');
+
+      if (page !== 0) {
+        setPage(0);
+      } else {
+        await fetchEmployees();
+      }
+    } catch (err) {
+      console.error('Failed to create employee:', err);
+      setError(
+        err.response?.data?.message || 'Unable to create employee.',
+      );
+    }
+  };
+
+  const handleUpdateEmployee = async (employeeData) => {
+    try {
+      await updateEmployee(selectedEmployee.id, employeeData);
+
+      handleCloseForm();
+      setSuccessMessage('Employee updated successfully!');
+      await fetchEmployees();
+    } catch (err) {
+      console.error('Failed to update employee:', err);
+      setError(
+        err.response?.data?.message || 'Unable to update employee.',
+      );
+    }
+  };
+
+  const handleOpenMenu = (event, employee) => {
+    setMenuAnchorEl(event.currentTarget);
+    setMenuEmployee(employee);
+  };
+
+  const handleCloseMenu = () => {
+    setMenuAnchorEl(null);
+    setMenuEmployee(null);
+  };
+
+  const handleOpenStatusDialog = (employee) => {
+    setEmployeeToUpdate(employee);
+    setOpenStatusDialog(true);
+    handleCloseMenu();
+  };
+
+  const handleCloseStatusDialog = () => {
+    if (updatingStatus) return;
+
+    setOpenStatusDialog(false);
+    setEmployeeToUpdate(null);
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (!employeeToUpdate) return;
+
+    try {
+      setUpdatingStatus(true);
+
+      if (employeeToUpdate.employmentStatus === 'ACTIVE') {
+        await deactivateEmployee(
+          employeeToUpdate.id,
+          employeeToUpdate,
+        );
+        setSuccessMessage('Employee deactivated successfully!');
+      } else {
+        await updateEmployee(employeeToUpdate.id, {
+          ...employeeToUpdate,
+          employmentStatus: 'ACTIVE',
+        });
+        setSuccessMessage('Employee reactivated successfully!');
+      }
+
+      setOpenStatusDialog(false);
+      setEmployeeToUpdate(null);
+
+      await fetchEmployees();
+    } catch (err) {
+      console.error('Failed to update employee status:', err);
+      setError(
+        err.response?.data?.message ||
+          'Unable to update employee status.',
+      );
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleSearchChange = (event) => {
+    setSearch(event.target.value);
+    setPage(0);
+  };
+
   return (
-    <Box sx={{ maxWidth: 1500, mx: 'auto' }}>
+    <Box>
+      {/* Page title and Add Employee button */}
       <Stack
         direction="row"
         alignItems="center"
         justifyContent="space-between"
+        spacing={2}
         sx={{ mb: 3 }}
       >
         <Box>
@@ -172,193 +231,91 @@ export default function EmployeesPage() {
             Employees
           </Typography>
 
-          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-            Manage and view your organization's employee information.
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Manage employee information and employment status
           </Typography>
         </Box>
 
-        <Stack direction="row" alignItems="center" spacing={2}>
-          <Chip
-            icon={<GroupsOutlinedIcon />}
-            label={`${totalEmployees.toLocaleString()} Employees`}
-            color="primary"
-            variant="outlined"
-            sx={{ fontWeight: 600, px: 1 }}
-          />
-
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAddForm}
-          >
-            Add Employee
-          </Button>
-        </Stack>
+        <Button
+          variant="contained"
+          size="medium"
+          startIcon={<AddIcon />}
+          onClick={handleOpenCreateForm}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+            borderRadius: 2,
+            px: 2,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Add Employee
+        </Button>
       </Stack>
 
+      {/* Search */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          mb: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 2,
+        }}
+      >
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Search employees..."
+          value={search}
+          onChange={handleSearchChange}
+        />
+      </Paper>
+
+      {/* Employee table */}
       <Paper
         elevation={0}
         sx={{
           border: '1px solid',
           borderColor: 'divider',
-          borderRadius: 3,
+          borderRadius: 2,
           overflow: 'hidden',
         }}
       >
-        <Box sx={{ p: 2.5 }}>
-          <TextField
-            size="small"
-            fullWidth
-            placeholder="Search employees on this page..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            sx={{ maxWidth: 420 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Box>
-
-        {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+        {loading ? (
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight={250}
+          >
             <CircularProgress />
           </Box>
-        )}
-
-        {error && (
-          <Box sx={{ px: 2.5, pb: 2 }}>
+        ) : error ? (
+          <Box sx={{ p: 3 }}>
             <Alert severity="error">{error}</Alert>
           </Box>
-        )}
-
-        {!loading && !error && (
+        ) : (
           <>
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                    {[
-                      'EMPLOYEE',
-                      'EMPLOYEE ID',
-                      'COUNTRY',
-                      'DEPARTMENT',
-                      'JOB TITLE',
-                      'STATUS',
-                      'ACTIONS',
-                    ].map((heading) => (
-                      <TableCell
-                        key={heading}
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.72rem',
-                          letterSpacing: '0.06em',
-                          color: 'text.secondary',
-                          py: 2,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {heading}
-                      </TableCell>
-                    ))}
+                    <TableCell sx={{ fontWeight: 700 }}>Employee</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Employee ID</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Country</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Department</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Job Title</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 700 }}>
+                      Actions
+                    </TableCell>
                   </TableRow>
                 </TableHead>
 
                 <TableBody>
-                  {filteredEmployees.map((employee) => (
-                    <TableRow
-                      key={employee.id}
-                      hover
-                      sx={{
-                        '& td': {
-                          py: 1.8,
-                          borderBottom: '1px solid',
-                          borderColor: 'divider',
-                        },
-                      }}
-                    >
-                      <TableCell>
-                        <Stack
-                          direction="row"
-                          alignItems="center"
-                          spacing={1.5}
-                        >
-                          <Avatar
-                            sx={{
-                              width: 38,
-                              height: 38,
-                              bgcolor: 'primary.light',
-                              color: 'primary.dark',
-                              fontWeight: 700,
-                              fontSize: '0.85rem',
-                            }}
-                          >
-                            {getInitials(employee)}
-                          </Avatar>
-
-                          <Box>
-                            <Typography fontWeight={600} fontSize="0.875rem">
-                              {employee.firstName} {employee.lastName}
-                            </Typography>
-
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              fontSize="0.78rem"
-                            >
-                              {employee.email}
-                            </Typography>
-                          </Box>
-                        </Stack>
-                      </TableCell>
-
-                      <TableCell>
-                        <Typography fontWeight={600} fontSize="0.82rem">
-                          {employee.employeeCode}
-                        </Typography>
-                      </TableCell>
-
-                      <TableCell>{employee.country}</TableCell>
-                      <TableCell>{employee.department}</TableCell>
-                      <TableCell>{employee.jobTitle}</TableCell>
-
-                      <TableCell>
-                        <Chip
-                          label={
-                            employee.employmentStatus === 'ACTIVE'
-                              ? 'Active'
-                              : 'Inactive'
-                          }
-                          size="small"
-                          color={
-                            employee.employmentStatus === 'ACTIVE'
-                              ? 'success'
-                              : 'default'
-                          }
-                          sx={{
-                            fontWeight: 600,
-                            minWidth: 75,
-                          }}
-                        />
-                      </TableCell>
-
-                      <TableCell>
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleOpenEditForm(employee)}
-                          aria-label={`Edit ${employee.firstName} ${employee.lastName}`}
-                        >
-                          <EditOutlinedIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-
-                  {filteredEmployees.length === 0 && (
+                  {employees.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
                         <Typography color="text.secondary">
@@ -366,6 +323,67 @@ export default function EmployeesPage() {
                         </Typography>
                       </TableCell>
                     </TableRow>
+                  ) : (
+                    employees.map((employee) => (
+                      <TableRow
+                        key={employee.id}
+                        hover
+                        sx={{
+                          '&:last-child td': { borderBottom: 0 },
+                        }}
+                      >
+                        <TableCell>
+                          <Typography fontWeight={600}>
+                            {employee.firstName} {employee.lastName}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                          >
+                            {employee.email}
+                          </Typography>
+                        </TableCell>
+
+                        <TableCell>
+                          {employee.employeeCode}
+                        </TableCell>
+
+                        <TableCell>{employee.country}</TableCell>
+
+                        <TableCell>{employee.department}</TableCell>
+
+                        <TableCell>{employee.jobTitle}</TableCell>
+
+                        <TableCell>
+                          <Chip
+                            label={
+                              employee.employmentStatus === 'ACTIVE'
+                                ? 'Active'
+                                : 'Inactive'
+                            }
+                            color={
+                              employee.employmentStatus === 'ACTIVE'
+                                ? 'success'
+                                : 'default'
+                            }
+                            size="small"
+                            variant="outlined"
+                          />
+                        </TableCell>
+
+                        <TableCell align="center">
+                          <IconButton
+                            size="small"
+                            onClick={(event) =>
+                              handleOpenMenu(event, employee)
+                            }
+                            aria-label={`Actions for ${employee.firstName}`}
+                          >
+                            <MoreVertIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
@@ -387,6 +405,58 @@ export default function EmployeesPage() {
         )}
       </Paper>
 
+      {/* Three-dot employee actions menu */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={handleCloseMenu}
+      >
+        {menuEmployee && (
+          <>
+            <MenuItem
+              onClick={() => handleOpenEditForm(menuEmployee)}
+            >
+              <EditOutlinedIcon
+                fontSize="small"
+                sx={{ mr: 1.5 }}
+              />
+              Edit employee
+            </MenuItem>
+
+            <MenuItem
+              onClick={() =>
+                handleOpenStatusDialog(menuEmployee)
+              }
+              sx={{
+                color:
+                  menuEmployee.employmentStatus === 'ACTIVE'
+                    ? 'error.main'
+                    : 'success.main',
+              }}
+            >
+              {menuEmployee.employmentStatus === 'ACTIVE' ? (
+                <>
+                  <PersonOffOutlinedIcon
+                    fontSize="small"
+                    sx={{ mr: 1.5 }}
+                  />
+                  Deactivate employee
+                </>
+              ) : (
+                <>
+                  <PersonAddAltOutlinedIcon
+                    fontSize="small"
+                    sx={{ mr: 1.5 }}
+                  />
+                  Reactivate employee
+                </>
+              )}
+            </MenuItem>
+          </>
+        )}
+      </Menu>
+
+      {/* Create/Edit employee dialog */}
       <Dialog
         open={openForm}
         onClose={handleCloseForm}
@@ -394,7 +464,7 @@ export default function EmployeesPage() {
         maxWidth="sm"
       >
         <DialogTitle>
-          {selectedEmployee ? 'Edit Employee' : 'Add New Employee'}
+          {selectedEmployee ? 'Edit Employee' : 'Add Employee'}
         </DialogTitle>
 
         <DialogContent dividers>
@@ -414,12 +484,69 @@ export default function EmployeesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Deactivate/Reactivate confirmation dialog */}
+      <Dialog
+        open={openStatusDialog}
+        onClose={handleCloseStatusDialog}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>
+          {employeeToUpdate?.employmentStatus === 'ACTIVE'
+            ? 'Deactivate Employee?'
+            : 'Reactivate Employee?'}
+        </DialogTitle>
+
+        <DialogContent>
+          <DialogContentText>
+            {employeeToUpdate?.employmentStatus === 'ACTIVE'
+              ? `Are you sure you want to deactivate ${employeeToUpdate?.firstName} ${employeeToUpdate?.lastName}? They will no longer be considered an active employee.`
+              : `Are you sure you want to reactivate ${employeeToUpdate?.firstName} ${employeeToUpdate?.lastName}?`}
+          </DialogContentText>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={handleCloseStatusDialog}
+            disabled={updatingStatus}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            color={
+              employeeToUpdate?.employmentStatus === 'ACTIVE'
+                ? 'error'
+                : 'success'
+            }
+            onClick={handleConfirmStatusChange}
+            disabled={updatingStatus}
+          >
+            {updatingStatus
+              ? 'Please wait...'
+              : employeeToUpdate?.employmentStatus === 'ACTIVE'
+                ? 'Deactivate'
+                : 'Reactivate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success notification */}
       <Snackbar
         open={Boolean(successMessage)}
-        autoHideDuration={4000}
-        message={successMessage}
+        autoHideDuration={3000}
         onClose={() => setSuccessMessage('')}
-      />
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSuccessMessage('')}
+          severity="success"
+          variant="filled"
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

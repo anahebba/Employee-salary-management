@@ -1,37 +1,60 @@
 
 import { createTheme } from '@mui/material/styles';
 
+const chartColors = {
+  terracotta: '#A96F62',
+  sage: '#829B8D',
+  dustyBlue: '#858EAD',
+  ochre: '#BD9A68',
+};
+
 const theme = createTheme({
   palette: {
     mode: 'light',
 
     primary: {
-      main: '#2563EB',
-      light: '#EFF6FF',
-      dark: '#1D4ED8',
+      main: chartColors.terracotta,
+      light: '#F2E6E2',
+      dark: '#875448',
     },
 
     secondary: {
-      main: '#64748B',
+      main: chartColors.dustyBlue,
+      light: '#E9EBF3',
+      dark: '#626B8C',
     },
 
     success: {
-      main: '#16A34A',
+      main: chartColors.sage,
+      light: '#E8EFEB',
+      dark: '#617C6E',
     },
 
     warning: {
-      main: '#EA580C',
+      main: chartColors.ochre,
+      light: '#F4EDDF',
+      dark: '#967444',
+    },
+
+    error: {
+      main: '#B66F70',
+      light: '#F4E8E7',
+      dark: '#925657',
     },
 
     background: {
-      default: '#F4F6FA',
+      default: '#F7F4F0',
       paper: '#FFFFFF',
     },
 
     text: {
-      primary: '#1E293B',
-      secondary: '#64748B',
+      primary: '#393631',
+      secondary: '#77716B',
     },
+
+    divider: '#E9E2DC',
+
+    chart: chartColors,
   },
 
   typography: {
@@ -65,12 +88,12 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 12,
-          border: '1px solid #E2E8F0',
-          boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+          border: '1px solid #E9E2DC',
+          boxShadow: '0 2px 8px rgba(57, 54, 49, 0.035)',
           transition: 'box-shadow 0.2s ease',
 
           '&:hover': {
-            boxShadow: '0 5px 16px rgba(15, 23, 42, 0.08)',
+            boxShadow: '0 5px 16px rgba(57, 54, 49, 0.07)',
           },
         },
       },

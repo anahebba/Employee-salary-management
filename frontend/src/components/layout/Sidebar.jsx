@@ -2,6 +2,7 @@
 import {
   DashboardOutlined,
   GroupsOutlined,
+   PaymentsOutlined,
 } from '@mui/icons-material';
 
 import {
@@ -30,6 +31,11 @@ const navigationItems = [
     path: '/employees',
     icon: <GroupsOutlined />,
   },
+  {
+  label: 'Salary Management',
+  path: '/salary-management',
+  icon: <PaymentsOutlined />,
+},
 ];
 
 export default function Sidebar() {
